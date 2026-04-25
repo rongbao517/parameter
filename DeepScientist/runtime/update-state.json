@@ -1,0 +1,6 @@
+{
+  "current_version": "1.5.17",
+  "latest_version": null,
+  "last_checked_at": "2026-04-25T10:41:07.316Z",
+  "last_check_error": "spawnSync /Users/wf24018/.nvm/versions/node/v24.13.0/bin/npm ETIMEDOUT"
+}

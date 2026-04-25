@@ -59,6 +59,7 @@ BASE_PARAMS = {
 
     # eVTOL 运营参数
     "SEAT_CAPACITY": 4,        # 每架飞机座位数
+    "NUM_VEHICLES": 20,        # 每个时间片全网可同时投入的车辆数上限
 
     # 空中距离限制
     "MIN_AIR_DISTANCE": 6.0,   # km，小于该距离不使用 UAM
@@ -86,14 +87,11 @@ BASE_PARAMS = {
 SENSITIVITY_VALUES = {
     "VOT": [10.0, 20.0, 30.0, 40.0],
     "price_ground": [3.0, 5.0, 7.0],
-    "price_air": [5.0, 7.0, 9.0],
+    "price_air": [5.0, 7.0, 9.0, 11.0],
     "speed_ground": [12.0, 18.0, 25.0],
     "speed_air": [100.0, 150.0, 200.0],
-    "MIN_AIR_DISTANCE": [3.0, 6.0, 9.0],
-    "MAX_AIR_DISTANCE": [40.0, 60.0, 80.0],
-    "SEAT_CAPACITY": [2, 4, 6],
-    "DEFAULT_DEPARTURE_CAPACITY": [10, 20, 40],
-    "DEFAULT_ARRIVAL_CAPACITY": [10, 20, 40],
+    "GRID_CELL_SIZE_KM": [0.75, 1.5, 2.25],
+    "NUM_VEHICLES": [10, 20, 40],
 }
 
 
@@ -442,6 +440,7 @@ for csv_file in CSV_FILES:
         speed_air = float(params["speed_air"])
         grid_cell_size_km = float(params["GRID_CELL_SIZE_KM"])
         seat_capacity = int(params["SEAT_CAPACITY"])
+        num_vehicles = int(params["NUM_VEHICLES"])
         min_air_distance = float(params["MIN_AIR_DISTANCE"])
         max_air_distance = float(params["MAX_AIR_DISTANCE"])
         unserved_penalty = float(params["UNSERVED_PENALTY"])
@@ -677,7 +676,21 @@ for csv_file in CSV_FILES:
             )
 
             # ------------------------------------------------------------
-            # 8.7 约束 3：停机坪起飞容量
+            # 8.7 约束 3：总机队数量
+            # 这里把车辆数近似为每个时间片全网可同时投入的总架次上限
+            # ------------------------------------------------------------
+
+            model.addConstrs(
+                quicksum(
+                    z[t, p, q]
+                    for (p, q) in valid_arcs
+                )
+                <= num_vehicles
+                for t in batch
+            )
+
+            # ------------------------------------------------------------
+            # 8.8 约束 4：停机坪起飞容量
             # ------------------------------------------------------------
 
             model.addConstrs(
@@ -692,7 +705,7 @@ for csv_file in CSV_FILES:
             )
 
             # ------------------------------------------------------------
-            # 8.8 约束 4：停机坪降落容量
+            # 8.9 约束 5：停机坪降落容量
             # ------------------------------------------------------------
 
             model.addConstrs(
@@ -706,12 +719,11 @@ for csv_file in CSV_FILES:
                 for q in vertiports
             )
 
-            # 不加入总机队时间约束
             # 不加入航线容量约束
             # 不加入飞机流动平衡约束
 
             # ------------------------------------------------------------
-            # 8.9 求解
+            # 8.10 求解
             # ------------------------------------------------------------
 
             try:
@@ -735,7 +747,7 @@ for csv_file in CSV_FILES:
             print(f"     是否有可行解: {has_solution}")
 
             # ------------------------------------------------------------
-            # 8.10 提取结果
+            # 8.11 提取结果
             # ------------------------------------------------------------
 
             batch_served = 0.0

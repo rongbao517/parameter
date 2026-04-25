@@ -1,0 +1,17 @@
+{
+  "runtimeManager": "uv",
+  "version": "1.5.17",
+  "pyprojectHash": "f624e5a1dfdd55c0cf8204d6816007a8c5767178dacbe4001f9c873cde6e510c",
+  "uvLockHash": "866cd07d56cca0f20785e4806fef7520c3d94fd8fd0cde86f1c247d708d32c7e",
+  "editable": false,
+  "sourceTreeHash": "0914a8821362a2449f5f91d38e30de36985cb1354e1874d6e4ce12726c099b4d",
+  "uvVersion": "uv 0.9.26 (ee4f00362 2026-01-15)",
+  "envPath": "/Users/wf24018/home/parameter/DeepScientist/runtime/python-env",
+  "source": {
+    "kind": "system",
+    "source": "conda",
+    "sourceExecutable": "/opt/anaconda3/bin/python3.13",
+    "sourceVersion": "3.13.9",
+    "sourceMajorMinor": "3.13"
+  }
+}

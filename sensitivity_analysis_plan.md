@@ -27,6 +27,12 @@
 |------|------|--------|------------------|-----------|
 | `GRID_CELL_SIZE_KM` | 网格单元边长 km | 1.5 | [0.75, **1.5**, 2.25] | 2 |
 
+**D 组 — Vehicle Count（机队规模类）**
+
+| 参数 | 含义 | 基准值 | 测试值（含基准） | 非基准点数 |
+|------|------|--------|------------------|-----------|
+| `NUM_VEHICLES` | 每时间片全网可同时投入车辆数 | 20 | [10, **20**, 40] | 2 |
+
 **固定校准参数（不进入 SENSITIVITY_VALUES）**
 
 | 参数 | 固定值 | 合理性依据 |
@@ -40,6 +46,10 @@
 - `DEFAULT_DEPARTURE_CAPACITY` / `DEFAULT_ARRIVAL_CAPACITY`：同上
 - `MIN_AIR_DISTANCE` / `MAX_AIR_DISTANCE`：固定校准参数
 
+**特别说明**
+
+- `NUM_VEHICLES` 与上述容量参数不同：它保留在本次分析中，单独作为机队规模组
+
 ### 1.2 场景总数
 
 | 来源 | 数量 |
@@ -48,9 +58,10 @@
 | Cost A 组非基准 | 2 + 3 + 3 = 8 |
 | Speed B 组非基准 | 2 + 2 = 4 |
 | Grid C 组非基准 | 2 |
-| **总计** | **15 场景** |
+| Vehicle D 组非基准 | 2 |
+| **总计** | **17 场景** |
 
-每场景 50 batch（500 时间片 / batch_size=10），共 **750 次 Gurobi 求解**。
+每场景 50 batch（500 时间片 / batch_size=10），共 **850 次 Gurobi 求解**。
 
 ---
 
@@ -62,12 +73,13 @@
 当前需要修改的项目：
 1. price_air：添加 11.0 → [5.0, 7.0, 9.0, 11.0]
 2. GRID_CELL_SIZE_KM：新增到 SENSITIVITY_VALUES → [0.75, 1.5, 2.25]
-3. 移除：MIN_AIR_DISTANCE, MAX_AIR_DISTANCE, SEAT_CAPACITY,
+3. 新增：NUM_VEHICLES → [10, 20, 40]
+4. 移除：MIN_AIR_DISTANCE, MAX_AIR_DISTANCE, SEAT_CAPACITY,
          DEFAULT_DEPARTURE_CAPACITY, DEFAULT_ARRIVAL_CAPACITY
-4. VOT 保留：[10.0, 20.0, 30.0, 40.0]（当前已存在）
-5. price_ground 保留：[3.0, 5.0, 7.0]（当前已存在）
-6. speed_ground 保留：[12.0, 18.0, 25.0]（当前已存在）
-7. speed_air 保留：[100.0, 150.0, 200.0]（当前已存在）
+5. VOT 保留：[10.0, 20.0, 30.0, 40.0]（当前已存在）
+6. price_ground 保留：[3.0, 5.0, 7.0]（当前已存在）
+7. speed_ground 保留：[12.0, 18.0, 25.0]（当前已存在）
+8. speed_air 保留：[100.0, 150.0, 200.0]（当前已存在）
 ```
 
 ### 2.2 `SCENARIO_SUMMARY_COLUMNS` 需要确认包含的字段
@@ -81,7 +93,7 @@
 ### 3.1 主分析文件：`scenario_summary.csv`
 
 **位置**：`sensitivity_results_<timestamp>/scenario_summary.csv`
-**行数**：15 行（每行一个场景）
+**行数**：17 行（每行一个场景）
 **列定义**：
 
 | 列名 | 类型 | 说明 |
@@ -142,7 +154,7 @@
 # 主表：每行一个场景
 # df_summary 列 = scenario_summary.csv 所有列 + 以下派生列：
 #   "RelObjective"     = (TotalObjective - baseline_obj) / baseline_obj * 100  # % 变化
-#   "Group"            = "Cost" / "Speed" / "Grid" / "Baseline"
+#   "Group"            = "Cost" / "Speed" / "Grid" / "Vehicle" / "Baseline"
 #   "AvgGroundTotalKM" = AvgGroundStartKM + AvgGroundEndKM                     # 总接驳距离
 
 # 基准值查询
@@ -156,6 +168,7 @@ group_mapping = {
     "speed_ground":       "Speed",
     "speed_air":          "Speed",
     "GRID_CELL_SIZE_KM":  "Grid",
+    "NUM_VEHICLES":       "Vehicle",
     "none":               "Baseline",
 }
 ```
@@ -185,7 +198,7 @@ group_mapping = {
 X 轴：TotalObjective 相对基准的百分比变化（%），中心线 = 0
 Y 轴：参数名（按绝对影响量从大到小排序）
 每条 bar：左侧为参数最低值对应变化，右侧为参数最高值对应变化
-颜色编码：A 组红色，B 组蓝色，C 组绿色
+颜色编码：A 组红色，B 组蓝色，C 组绿色，D 组棕色
 参考线：x = 0（基准）
 标注：每 bar 末端标注具体 % 数值
 ```
@@ -259,7 +272,7 @@ X 轴：GRID_CELL_SIZE_KM [0.75, 1.5, 2.25]
 **类型**：分组堆叠条形图
 
 ```
-X 轴：所有 15 个场景（x 轴标签 = ChangedParameter + ChangedValue，旋转 45°）
+X 轴：所有 17 个场景（x 轴标签 = ChangedParameter + ChangedValue，旋转 45°）
 Y 轴：平均出行距离（km）
 堆叠层：
   - 底层（蓝）：AvgGroundStartKM
@@ -277,7 +290,7 @@ Y 轴：平均出行距离（km）
 #### 图 6：停机坪与航线利用率
 
 **文件名**：`fig06_vertiport_route_utilization.png`
-**类型**：3×1 子图（每组一个），每子图双折线
+**类型**：4×1 子图（每组一个），每子图双折线
 
 ```
 每个子图：
@@ -288,6 +301,7 @@ Y 轴：平均出行距离（km）
 子图 6a：A 组（price_ground, price_air, VOT 各一条折线组）
 子图 6b：B 组（speed_ground, speed_air）
 子图 6c：C 组（GRID_CELL_SIZE_KM）
+子图 6d：D 组（NUM_VEHICLES）
 ```
 
 **分析目的**：参数变化是否导致网络拓扑变化（更多/更少停机坪启用）。
@@ -297,7 +311,7 @@ Y 轴：平均出行距离（km）
 #### 图 7：载客率（Load Factor）敏感性
 
 **文件名**：`fig07_load_factor_sensitivity.png`
-**类型**：3×1 子图（每组一个），折线图
+**类型**：4×1 子图（每组一个），折线图
 
 ```
 X 轴：参数值（各组分别）
@@ -307,6 +321,7 @@ Y 轴：AverageLoadFactor（0~1）
 子图 7a：A 组各参数（price_ground, price_air, VOT）
 子图 7b：B 组各参数（speed_ground, speed_air）
 子图 7c：C 组（GRID_CELL_SIZE_KM）
+子图 7d：D 组（NUM_VEHICLES）
 ```
 
 **分析目的**：成本/速度参数变化对 UAM 座位利用效率的影响。
@@ -366,7 +381,7 @@ sensitivity_viz.py
 
 ```
 步骤 1：修改 parameter.py
-        → 更新 SENSITIVITY_VALUES（添加 GRID_CELL_SIZE_KM，调整 price_air，移除非必要参数）
+        → 更新 SENSITIVITY_VALUES（添加 GRID_CELL_SIZE_KM、NUM_VEHICLES，调整 price_air，移除非必要参数）
 
 步骤 2：运行 parameter.py
         → 生成 sensitivity_results_<timestamp>/ 目录及所有 CSV
@@ -384,7 +399,7 @@ sensitivity_viz.py
 
 ## 六、最脆弱的假设
 
-**本 plan 假设**：所有 15 场景下 `NoSolutionBatches == 0`（模型总有可行解）。若 `GRID_CELL_SIZE_KM = 2.25` 时地面距离过大，导致某些接驳成本异常高但又必须服务（惩罚机制），Gurobi 可能触发 `TIME_LIMIT` 而非 `OPTIMAL`，这不影响 plan 结构，但需在结果分析中标注哪些场景为非最优解，并说明对 TotalObjective 的影响方向（TIME_LIMIT 解偏高，因此是保守估计）。
+**本 plan 假设**：所有 17 场景下 `NoSolutionBatches == 0`（模型总有可行解）。若 `GRID_CELL_SIZE_KM = 2.25` 时地面距离过大，或 `NUM_VEHICLES = 10` 时总机队过紧，Gurobi 可能触发 `TIME_LIMIT` 而非 `OPTIMAL`，这不影响 plan 结构，但需在结果分析中标注哪些场景为非最优解，并说明对 TotalObjective 的影响方向（TIME_LIMIT 解偏高，因此是保守估计）。
 
 ---
 
@@ -395,6 +410,7 @@ sensitivity_viz.py
 因此本次敏感性分析体现的是：
 - **不同参数下 UAM 路线选择**（选哪对停机坪）如何变化
 - **系统总广义成本**如何随参数变化
+- **机队规模约束**如何影响总架次、网络拓扑和服务结构
 - **网络拓扑**（启用停机坪/航线数量）和**座位利用率**如何变化
 
 不体现：乘客在 UAM 和纯地面之间的模态选择（此问题需要 `uam_single_factor_generalized_cost.py` 的框架）。
